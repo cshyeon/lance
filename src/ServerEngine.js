@@ -359,6 +359,20 @@ class ServerEngine {
         return JSON.stringify(gameStatus);
     }
 
+    // TODO: remove this from ServerEngine.  It needs to find a home.
+    syncReflectiveAttributes(serverObj, clientObj) {
+        if (this.serializer.reflectiveClasses.hasOwnProperty(clientObj.classId)) {
+            let reflectiveNetscheme = this.serializer.reflectiveClasses[clientObj.classId];
+            let allAttributes = Object.keys(reflectiveNetscheme);
+            let baseAttributes = Object.keys(serverObj.constructor.netScheme);
+            for (let attr of allAttributes) {
+                if (attr in baseAttributes)
+                    continue;
+                serverObj[attr] = clientObj[attr];
+            }
+        }
+    }
+
     clientSync(s) {
         if (!this.options.clientControlled)
             return;
@@ -366,22 +380,16 @@ class ServerEngine {
         let syncObj = this.serializer.deserialize(tArray.buffer).obj;
 
         let world = this.gameEngine.world;
-        if (world.objects.hasOwnProperty(syncObj.id)) {
-            let serverObj = world.objects[syncObj.id];
-            serverObj.syncTo(syncObj);
-            if (this.serializer.reflectiveClasses.hasOwnProperty(syncObj.classId)) {
-                let reflectiveNetscheme = this.serializer.reflectiveClasses[syncObj.classId];
-                let allAttributes = Object.keys(reflectiveNetscheme);
-                let baseAttributes = Object.keys(serverObj.netScheme);
-                for (let attr of allAttributes) {
-                    if (attr in baseAttributes)
-                        continue;
-                    serverObj[attr] = syncObj[attr];
-                }
-            }
-        } else {
-            this.gameEngine.addObjectToWorld(syncObj);
-            console.log(`adding new object ${syncObj}`);
+        let serverObj = world.objects[syncObj.id];
+        if (!serverObj) {
+            serverObj = new syncObj.constructor();
+        }
+
+        serverObj.syncTo(syncObj);
+        this.syncReflectiveAttributes(serverObj, syncObj);
+        if (!world.objects[syncObj.id]) {
+            this.gameEngine.addObjectToWorld(serverObj);
+            console.log(`adding new object ${serverObj}`);
         }
     }
 }

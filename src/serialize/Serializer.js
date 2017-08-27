@@ -50,7 +50,8 @@ class Serializer {
     registerClass(classObj, classId) {
         // if no classId is specified, hash one from the class name
         classId = classId ? classId : Utils.hashStr(classObj.name);
-        if (this.registeredClasses[classId]) {
+        let currentClass = this.registeredClasses[classId];
+        if (currentClass && currentClass !== classObj) {
             console.error(`Serializer: classId collision for ${classId} when registering class`, classObj);
         }
 
@@ -67,7 +68,7 @@ class Serializer {
         classDesc.netScheme.classId = { type: Serializer.TYPES.INT16 };
 
         // keep track of the extra attributes
-        this.registeredClasses[classId] = baseClass;
+        this.registerClass(baseClass);
         this.reflectiveClasses[classId] = classDesc.netScheme;
     }
 
@@ -84,8 +85,8 @@ class Serializer {
         // TODO: we assume reflective classes always derive from DynamicObject
         //       we need a baseClassID attribute
         if (this.reflectiveClasses.hasOwnProperty(objectClassId)) {
+            extraNetScheme = this.reflectiveClasses[objectClassId];
             objectClassId = Utils.hashStr('DynamicObject');
-            extraNetScheme = this.reflectiveClasses(objectClassId);
         }
 
         // get the class constructor
@@ -99,7 +100,7 @@ class Serializer {
 
         let obj = new ObjectClass();
         for (let property of Object.keys(netScheme).sort()) {
-            let read = this.readDataView(dataView, byteOffset + localByteOffset, ObjectClass.netScheme[property]);
+            let read = this.readDataView(dataView, byteOffset + localByteOffset, netScheme[property]);
             obj[property] = read.data;
             localByteOffset += read.bufferSize;
         }
