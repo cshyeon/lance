@@ -362,9 +362,27 @@ class ServerEngine {
     clientSync(s) {
         if (!this.options.clientControlled)
             return;
+        let tArray = new Uint8Array(s.dataBuffer);
+        let syncObj = this.serializer.deserialize(tArray.buffer).obj;
 
-        let syncObj = this.Serializer.deserialize(s);
-        console.log('got a request from client to update object ', syncObj);
+        let world = this.gameEngine.world;
+        if (world.objects.hasOwnProperty(syncObj.id)) {
+            let serverObj = world.objects[syncObj.id];
+            serverObj.syncTo(syncObj);
+            if (this.serializer.reflectiveClasses.hasOwnProperty(syncObj.classId)) {
+                let reflectiveNetscheme = this.serializer.reflectiveClasses[syncObj.classId];
+                let allAttributes = Object.keys(reflectiveNetscheme);
+                let baseAttributes = Object.keys(serverObj.netScheme);
+                for (let attr of allAttributes) {
+                    if (attr in baseAttributes)
+                        continue;
+                    serverObj[attr] = syncObj[attr];
+                }
+            }
+        } else {
+            this.gameEngine.addObjectToWorld(syncObj);
+            console.log(`adding new object ${syncObj}`);
+        }
     }
 }
 
