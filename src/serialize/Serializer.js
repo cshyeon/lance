@@ -63,6 +63,10 @@ class Serializer {
             console.error(`Serializer: classId collision for ${classId} when registering class`, classDesc);
         }
 
+        // ensure the classId is serialized
+        classDesc.netScheme.classId = { type: Serializer.TYPES.INT16 };
+
+        // keep track of the extra attributes
         this.registeredClasses[classId] = baseClass;
         this.reflectiveClasses[classId] = classDesc.netScheme;
     }
@@ -70,22 +74,32 @@ class Serializer {
     deserialize(dataBuffer, byteOffset) {
         byteOffset = byteOffset ? byteOffset : 0;
         let localByteOffset = 0;
+        let extraNetScheme = {};
 
         let dataView = new DataView(dataBuffer);
 
         let objectClassId = dataView.getUint8(byteOffset + localByteOffset);
 
-        // todo if classId is 0 - take care of dynamic serialization.
-        let objectClass = this.registeredClasses[objectClassId];
-        if (objectClass == null) {
+        // TODO: if classId is 0 - take care of dynamic serialization.
+        // TODO: we assume reflective classes always derive from DynamicObject
+        //       we need a baseClassID attribute
+        if (this.reflectiveClasses.hasOwnProperty(objectClassId)) {
+            objectClassId = Utils.hashStr('DynamicObject');
+            extraNetScheme = this.reflectiveClasses(objectClassId);
+        }
+
+        // get the class constructor
+        let ObjectClass = this.registeredClasses[objectClassId];
+        if (!ObjectClass) {
             console.error(`Serializer: unable to find class with objectClassId ${objectClassId}`);
         }
+        let netScheme = Object.assign({}, ObjectClass.netScheme, extraNetScheme);
 
         localByteOffset += Uint8Array.BYTES_PER_ELEMENT; // advance the byteOffset after the classId
 
-        let obj = new objectClass();
-        for (let property of Object.keys(objectClass.netScheme).sort()) {
-            let read = this.readDataView(dataView, byteOffset + localByteOffset, objectClass.netScheme[property]);
+        let obj = new ObjectClass();
+        for (let property of Object.keys(netScheme).sort()) {
+            let read = this.readDataView(dataView, byteOffset + localByteOffset, ObjectClass.netScheme[property]);
             obj[property] = read.data;
             localByteOffset += read.bufferSize;
         }

@@ -46,6 +46,11 @@ class Serializable {
             console.warn('no netScheme defined! This will result in awful performance');
         }
 
+        // add reflective attributes
+        if (serializer.reflectiveClasses.hasOwnProperty(classId)) {
+            netScheme = Object.assign({}, serializer.reflectiveClasses[classId], netScheme);
+        }
+
         // TODO: currently we serialize every node twice, once to calculate the size
         //       of the buffers and once to write them out.  This can be reduced to
         //       a single pass by starting with a large (and static) ArrayBuffer and
