@@ -115,13 +115,15 @@ class ClientEngine {
         // add an object in embedded mode
         this.gameEngine.LANCE.newObject = (className, attributes) => {
             let o = new DynamicObject();
+            o.classId = Utils.hashStr(className);
             Object.assign(o, attributes);
             return o;
         }
 
         // EMBEDDED MODE
         this.gameEngine.LANCE.updateObjectOnServer = (obj) => {
-            this.socket.emit('clientSync', obj.serialize(this.serializer).dataBuffer);
+            let serialized = obj.serialize(this.serializer);
+            this.socket.emit('clientSync', serialized);
         }
     }
 
