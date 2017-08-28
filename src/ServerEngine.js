@@ -279,7 +279,9 @@ class ServerEngine {
 
         socket.on('clientSync', this.clientSync.bind(this));
         // TODO: currently registerReflectiveClass assumes DynamicObject but we need a switch here for each base class
-        socket.on('registerReflectiveClass', (classDesc) => { this.serializer.registerReflectiveClass(DynamicObject, classDesc); });
+        if (this.options.echoServer) {
+            socket.on('registerReflectiveClass', (classDesc) => { this.serializer.registerReflectiveClass(DynamicObject, classDesc); });
+        }
 
         this.networkMonitor.registerPlayerOnServer(socket);
     }
@@ -374,7 +376,7 @@ class ServerEngine {
     }
 
     clientSync(s) {
-        if (!this.options.clientControlled)
+        if (!this.options.echoServer)
             return;
         let tArray = new Uint8Array(s.dataBuffer);
         let syncObj = this.serializer.deserialize(tArray.buffer).obj;
