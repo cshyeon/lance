@@ -224,7 +224,7 @@ export default class ClientEngine {
 
         this.gameEngine.emit('client__preStep');
         while (this.inboundMessages.length > 0) {
-            this.handleInboundMessage(this.inboundMessages.pop());
+            this.handleInboundMessage(this.inboundMessages.shift());
             this.checkDrift('onServerSync');
         }
 
